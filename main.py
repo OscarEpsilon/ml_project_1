@@ -91,6 +91,10 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
         if thisCourseDescTag.name != "br":
             courseDesc += thisCourseDescTag.string
     
+    # How do you even manage to put an invisible character at the end of the course description
+    if courseDesc[-1:] == " ":
+        courseDesc = courseDesc[:-1]
+    
     return {COURSES_TITLE_KEY: courseTitle,
             COURSES_CREDIT_KEY: courseCredit,
             COURSES_DESC_KEY: courseDesc}
