@@ -2,16 +2,16 @@ import pandas as pd
 import requests as rq
 import bs4
 
-catalogURL = "https://www.newschoolva.org/academics/course-catalog/"
-reqHeaders = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"}
-
-catalogRes = rq.get(catalogURL, headers=reqHeaders)
-catalogHTML = catalogRes.text
-catalogSoup = bs4.BeautifulSoup(catalogHTML, "html5lib")
+CATALOG_URL = "https://www.newschoolva.org/academics/course-catalog/"
+CATALOG_REQ_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"}
 
 COURSES_TITLE_KEY = "title"
 COURSES_CREDIT_KEY = "credit"
 COURSES_DESC_KEY = "description"
+
+catalogRes = rq.get(CATALOG_URL, headers=CATALOG_REQ_HEADERS)
+catalogHTML = catalogRes.text
+catalogSoup = bs4.BeautifulSoup(catalogHTML, "html5lib")
 
 def getCourseInfo(titleTag: bs4.Tag) -> dict:
     # Some courses have their line break nested inside their strong tag instead of outside
@@ -91,7 +91,9 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
         if thisCourseDescTag.name != "br":
             courseDesc += thisCourseDescTag.string
     
-    return {COURSES_TITLE_KEY: courseTitle, COURSES_CREDIT_KEY: courseCredit, COURSES_DESC_KEY: courseDesc}
+    return {COURSES_TITLE_KEY: courseTitle,
+            COURSES_CREDIT_KEY: courseCredit,
+            COURSES_DESC_KEY: courseDesc}
 
 titleTags = catalogSoup.find_all("strong")
 
