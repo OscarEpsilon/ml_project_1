@@ -12,8 +12,10 @@ soup = bs4.BeautifulSoup(pgHTML, "html5lib")
 
 def getCourseInfo(titleTag: bs4.Tag) -> dict:
     # Some courses have their line break nested inside their strong tag instead of outside
+    brInsideStrong = False
     if len(titleTag.contents) == 2:
         courseTitle = str(next(titleTag.children))
+        brInsideStrong = True
     else:
         courseTitle = titleTag.string
     
@@ -32,16 +34,16 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
     if prevSibling != None:
         courseTitle = prevSibling.string + courseTitle
     
-    numTitleEndBoldLetters = 0
+    numTitleExtraEndBoldLetters = 0
     
     # Some courses have a bolded comma at the end of the title
     # Some also have an extra space as well
     if courseTitle[-1:] == ",":
         courseTitle = courseTitle[:-1]
-        numTitleEndBoldLetters = 1
+        numTitleExtraEndBoldLetters = 1
     elif courseTitle[-2:] == ", ":
         courseTitle = courseTitle[:-2]
-        numTitleEndBoldLetters = 2
+        numTitleExtraEndBoldLetters = 2
     
     courseInfo = list(titleTag.next_siblings)
 
@@ -52,8 +54,8 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
     
     # If a course credit is given, it must be the next sibling with index 0, and it must have the str type
     # Otherwise, we know it is a math credit
-    if type(courseInfo[0]) == bs4.NavigableString:
-        courseCredit = str(courseInfo[0][(2 - numTitleEndBoldLetters):])
+    if type(courseInfo[0]) == bs4.NavigableString and not brInsideStrong:
+        courseCredit = str(courseInfo[0][(2 - numTitleExtraEndBoldLetters):])
         
         # Some course credits end with a space
         if courseCredit[-1:] == " ":
