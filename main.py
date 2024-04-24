@@ -14,7 +14,7 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
     # Some courses have their line break nested inside their strong tag instead of outside
     brInsideStrong = False
     if len(titleTag.contents) == 2:
-        courseTitle = str(next(titleTag.children))
+        courseTitle = next(titleTag.children).string
         brInsideStrong = True
     else:
         courseTitle = titleTag.string
@@ -55,7 +55,7 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
     # If a course credit is given, it must be the next sibling with index 0, and it must have the str type
     # Otherwise, we know it is a math credit
     if type(courseInfo[0]) == bs4.NavigableString and not brInsideStrong:
-        courseCredit = str(courseInfo[0][(2 - numTitleExtraEndBoldLetters):])
+        courseCredit = courseInfo[0][(2 - numTitleExtraEndBoldLetters):]
         
         # Some course credits end with a space
         if courseCredit[-1:] == " ":
@@ -69,10 +69,16 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
         courseCredit = "Math"
         descSearchStartIndex = 0
     
-    for thisInfo in courseInfo[descSearchStartIndex:]:
-        if type(thisInfo) == bs4.NavigableString and str(thisInfo) != ")":
-            courseDesc = str(thisInfo)
-            break
+    courseDescTags = []
+
+    if brInsideStrong:
+        courseDescTags = list(titleTag.next_siblings)
+    else:
+        courseDescTags = list(titleTag.findNextSibling(name="br").next_siblings)
+    
+    for thisCourseDescTag in courseDescTags:
+        if thisCourseDescTag.name != "br":
+            courseDesc += thisCourseDescTag.string
     
     return {"title": courseTitle, "credit": courseCredit, "desc": courseDesc}
 
