@@ -73,7 +73,7 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict:
         if courseCredit[-1:] == " ":
             courseCredit = courseCredit[:-1]
         
-        # Some end with " ("
+        # Some end with " (", sometimes the case if it is open to 8th graders
         if courseCredit[-2:] == " (":
             courseCredit = courseCredit[:-2]
     
