@@ -1,5 +1,4 @@
 from typing import Final
-from enum import Enum
 
 import pandas as pd
 import requests as rq
