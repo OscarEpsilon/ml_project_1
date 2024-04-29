@@ -1,4 +1,5 @@
 from typing import Final
+from enum import Enum
 
 import pandas as pd
 import requests as rq
@@ -17,9 +18,22 @@ catalogSoup: Final[bs4.BeautifulSoup] = bs4.BeautifulSoup(catalogHTML, "html5lib
 
 courseDicts: list[dict[str, str]] = list[dict[str, str]]()
 
-def parseCourseCreditStr(courseCreditStr: str) -> list[str]:
-    res: list[str] = courseCreditStr.replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("/", ", ").replace(", or ", ", ").replace(" or ", ", ").split(", ")
-    return res
+def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str]:
+    level: str
+    if courseCreditStr.find(" 1/2") != -1:
+        level = "1/2"
+    elif courseCreditStr.find(" 1") != -1:
+        level = "1"
+    elif courseCreditStr.find(" 2") != -1:
+        level = "2"
+    elif courseCreditStr.find(" 3") != -1:
+        level = "3"
+    else:
+        level = "Honors"
+    
+    credits: list[str] = courseCreditStr.replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("/", ", ").replace(", or ", ", ").replace(" or ", ", ").split(", ")
+    
+    return (credits, level)
 
 def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     courseTitle: str = ""
@@ -115,16 +129,26 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     # Some courses are repeated across categories; some with different credit types
     for otherCourseDict in courseDicts:
         if otherCourseDict[COURSES_TITLE_KEY] == courseTitle:
-            courseCredits: list[str] = list(set(parseCourseCreditStr(courseCredit) + parseCourseCreditStr(otherCourseDict[COURSES_CREDIT_KEY])))
+            otherCourseCreditInfo: tuple[list[str], str] = parseCourseCreditStr(otherCourseDict[COURSES_CREDIT_KEY])
+            thisCourseCreditInfo: tuple[list[str], str] = parseCourseCreditStr(courseCredit)
+
+            courseCredits: list[str] = list(set(thisCourseCreditInfo[0] + otherCourseCreditInfo[0]))
+
             if len(courseCredits) == 1:
                 otherCourseDict[COURSES_CREDIT_KEY] = courseCredits[0]
             elif len(courseCredits) == 2:
-                otherCourseDict[COURSES_CREDIT_KEY] = courseCredits[0] + " or " + courseCredits[1]
+                otherCourseDict[COURSES_CREDIT_KEY] = f"{courseCredits[0]} or {courseCredits[1]}"
             else:
                 otherCourseDict[COURSES_CREDIT_KEY] = ""
                 for thisCourseCredit in courseCredits[:-1]:
-                    otherCourseDict[COURSES_CREDIT_KEY] += thisCourseCredit + ", "
-                otherCourseDict[COURSES_CREDIT_KEY] += "or " + courseCredits[-1]
+                    otherCourseDict[COURSES_CREDIT_KEY] += f"{thisCourseCredit}, "
+                otherCourseDict[COURSES_CREDIT_KEY] += f"or {courseCredits[-1]}"
+            
+            if thisCourseCreditInfo[1] == "Honors":
+                otherCourseDict[COURSES_CREDIT_KEY] = f"Honors {otherCourseDict[COURSES_CREDIT_KEY]}"
+            else:
+                otherCourseDict[COURSES_CREDIT_KEY] += f" {thisCourseCreditInfo[1]}"
+
             return None
 
     return {COURSES_TITLE_KEY: courseTitle,
