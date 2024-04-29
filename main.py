@@ -15,7 +15,13 @@ catalogRes: Final[rq.Response] = rq.get(CATALOG_URL, headers=CATALOG_REQ_HEADERS
 catalogHTML: Final[str] = catalogRes.text
 catalogSoup: Final[bs4.BeautifulSoup] = bs4.BeautifulSoup(catalogHTML, "html5lib")
 
-def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str]:
+courseDicts: list[dict[str, str]] = list[dict[str, str]]()
+
+def parseCourseCreditStr(courseCreditStr: str) -> list[str]:
+    res: list[str] = courseCreditStr.replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("/", ", ").replace(", or ", ", ").replace(" or ", ", ").split(", ")
+    return res
+
+def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     courseTitle: str = ""
 
     # Some courses have their line break nested inside their strong tag instead of outside, breaking titleTag.string
@@ -105,6 +111,21 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str]:
     # How do you even manage to put an invisible character at the end of a course description
     if courseDesc[-1:] == " ":
         courseDesc = courseDesc[:-1]
+    
+    # Some courses are repeated across categories; some with different credit types
+    for otherCourseDict in courseDicts:
+        if otherCourseDict[COURSES_TITLE_KEY] == courseTitle:
+            courseCredits: list[str] = list(set(parseCourseCreditStr(courseCredit) + parseCourseCreditStr(otherCourseDict[COURSES_CREDIT_KEY])))
+            if len(courseCredits) == 1:
+                otherCourseDict[COURSES_CREDIT_KEY] = courseCredits[0]
+            elif len(courseCredits) == 2:
+                otherCourseDict[COURSES_CREDIT_KEY] = courseCredits[0] + " or " + courseCredits[1]
+            else:
+                otherCourseDict[COURSES_CREDIT_KEY] = ""
+                for thisCourseCredit in courseCredits[:-1]:
+                    otherCourseDict[COURSES_CREDIT_KEY] += thisCourseCredit + ", "
+                otherCourseDict[COURSES_CREDIT_KEY] += "or " + courseCredits[-1]
+            return None
 
     return {COURSES_TITLE_KEY: courseTitle,
             COURSES_CREDIT_KEY: courseCredit,
@@ -117,6 +138,10 @@ for tagIndex, thisTag in enumerate(titleTags):
     if thisTag.string == " ":
         del(titleTags[tagIndex])
 
-courseDicts: list[dict[str, str]] = list(map(getCourseInfo, titleTags))
+for thisTitleTag in titleTags:
+    courseDict: dict[str, str] | None = getCourseInfo(thisTitleTag)
+    if courseDict != None:
+        courseDicts.append(courseDict)
+
 courseDF: pd.DataFrame = pd.DataFrame(courseDicts)
 courseDF.to_csv("courses.csv")
