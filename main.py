@@ -76,7 +76,7 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     # we just don't even bother to make exceptions for all of them here
     if courseTitle == "Collage Studio":
         return {COURSES_TITLE_KEY: courseTitle,
-                COURSES_CREDIT_KEY: "Arts 1",
+                COURSES_CREDIT_KEY: "Art 1",
                 COURSES_DESC_KEY: "Students will work with mixed media techniques to create various collage artworks. Students can expect to work in 2D, 3D, and digital art mediums to develop their collages. EQ: How can pre-existing images and materials be repurposed to create a new meaning?"}
 
     # Also this one
