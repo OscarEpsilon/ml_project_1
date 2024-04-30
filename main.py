@@ -148,8 +148,10 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | None | list[str]] | None
     # Some courses are repeated across categories; some with different credit types, so we have to merge them
     for otherCourseDict in courseDicts:
         if otherCourseDict[COURSES_TITLE_KEY] == courseTitle:
-            otherCourseDict[COURSES_CREDITS_KEY] = list(set(courseCredits + otherCourseDict[COURSES_CREDITS_KEY])) # type: ignore
+            otherCourseDict[COURSES_CREDITS_KEY] = sorted(set(courseCredits + otherCourseDict[COURSES_CREDITS_KEY])) # type: ignore
             return None
+    
+    courseCredits = sorted(courseCredits)
 
     return {COURSES_TITLE_KEY: courseTitle,
             COURSES_CREDITS_KEY: courseCredits,
