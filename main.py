@@ -8,7 +8,7 @@ CATALOG_URL: Final[str] = "https://www.newschoolva.org/academics/course-catalog/
 CATALOG_REQ_HEADERS: Final[dict[str, str]] = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"}
 
 COURSES_TITLE_KEY: Final[str] = "title"
-COURSES_CREDITS_KEY: Final[str] = "credit"
+COURSES_CREDITS_KEY: Final[str] = "credits"
 COURSES_LEVEL_KEY: Final[str] = "level"
 COURSES_DESC_KEY: Final[str] = "description"
 
