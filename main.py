@@ -115,23 +115,23 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | list[str]] | None:
 
     courseInfoTags: Final[list[bs4.PageElement]] = list(titleTag.next_siblings)
 
-    courseCredit: str = ""
+    courseCreditStr: str = ""
     courseDesc: str = ""
 
     # If a course credit is given, it must be the next sibling with index 0, and it must have the str type
     # Otherwise, we know it is a math credit
     if type(courseInfoTags[0]) == bs4.NavigableString and not brInsideStrong:
-        courseCredit = courseInfoTags[0][(2 - numTitleExtraEndBoldLetters):]
+        courseCreditStr = courseInfoTags[0][(2 - numTitleExtraEndBoldLetters):]
 
         # Some course credits end with a space
-        if courseCredit[-1:] == " ":
-            courseCredit = courseCredit[:-1]
+        if courseCreditStr[-1:] == " ":
+            courseCreditStr = courseCreditStr[:-1]
 
         # Some end with " (", sometimes the case if it is open to 8th graders
-        if courseCredit[-2:] == " (":
-            courseCredit = courseCredit[:-2]
+        if courseCreditStr[-2:] == " (":
+            courseCreditStr = courseCreditStr[:-2]
     else:
-        courseCredit = "Math"
+        courseCreditStr = "Math"
 
     courseDescElements: list[bs4.PageElement] = []
 
@@ -157,7 +157,7 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | list[str]] | None:
     
     courseCredits: list[str]
     courseLevel: str
-    courseCredits, courseLevel = parseCourseCreditStr(courseCredit)
+    courseCredits, courseLevel = parseCourseCreditStr(courseCreditStr)
     
     # Some courses are repeated across categories; some with different credit types, so we have to merge them
     for otherCourseDict in courseDicts:
