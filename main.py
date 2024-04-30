@@ -16,52 +16,34 @@ catalogRes: Final[rq.Response] = rq.get(CATALOG_URL, headers=CATALOG_REQ_HEADERS
 catalogHTML: Final[str] = catalogRes.text
 catalogSoup: Final[bs4.BeautifulSoup] = bs4.BeautifulSoup(catalogHTML, "html5lib")
 
-courseDicts: list[dict[str, str | list[str]]] = list[dict[str, str | list[str]]]()
+courseDicts: list[dict[str, str | None | list[str]]] = list[dict[str, str | None | list[str]]]()
 
-def generateCourseCreditStr(courseCreditInfo: tuple[list[str], str]) -> str:
-    res: str = ""
+def parseCourseLevel(strWithLevel: str) -> str | None:
+    if strWithLevel.find(" 1/2") != -1:
+        return "1/2"
+    elif strWithLevel.find(" 1") != -1:
+        return "1"
+    elif strWithLevel.find(" 2") != -1:
+        return "2"
+    elif strWithLevel.find(" 3") != -1:
+        return "3"
+    elif strWithLevel.find("Advanced ") != -1:
+        return "Advanced"
+    elif strWithLevel.find("Honors ") != -1:
+        return "Honors"
+    return None
 
-    courseCredits: list[str] = courseCreditInfo[0]
-    courseLevel: str = courseCreditInfo[1]
+# Cleanup credit string and remove course level
+def cleanCreditStr(courseCreditStr: str) -> str:
+    return courseCreditStr.replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace(" Level ", " ").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art")
 
-    if len(courseCredits) == 1:
-        res = courseCreditInfo[0][0]
-    elif len(courseCredits) == 2:
-        res = f"{courseCredits[0]} or {courseCredits[1]}"
-    else:
-        res = ""
-        for thisCourseCredit in courseCredits[:-1]:
-            res += f"{thisCourseCredit}, "
-        res += f"or {courseCredits[-1]}"
-    
-    if courseLevel != "0":
-        if courseLevel == "Honors":
-            res = f"Honors {res}"
-        else:
-            res += f" {courseLevel}"
-    
-    return res
-
-def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str]:
-    courseLevel: str
-    if courseCreditStr.find(" 1/2") != -1:
-        courseLevel = "1/2"
-    elif courseCreditStr.find(" 1") != -1:
-        courseLevel = "1"
-    elif courseCreditStr.find(" 2") != -1:
-        courseLevel = "2"
-    elif courseCreditStr.find(" 3") != -1:
-        courseLevel = "3"
-    elif courseCreditStr.find("Honors ") != -1:
-        courseLevel = "Honors"
-    else:
-        courseLevel = "0"
-    
-    courseCredits: list[str] = courseCreditStr.replace(" Level ", " ").replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art").split(", ")
+def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str | None]:
+    courseCredits: list[str] = cleanCreditStr(courseCreditStr).split(", ")
+    courseLevel: str | None = parseCourseLevel(courseCreditStr)
 
     return (courseCredits, courseLevel)
 
-def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | list[str]] | None:
+def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | None | list[str]] | None:
     courseTitle: str = ""
 
     # Some courses have their line break nested inside their strong tag instead of outside, breaking titleTag.string
@@ -156,8 +138,12 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | list[str]] | None:
         courseDesc = courseDesc[:-1]
     
     courseCredits: list[str]
-    courseLevel: str
-    courseCredits, courseLevel = parseCourseCreditStr(courseCreditStr)
+    courseLevel: str | None
+    if courseCreditStr == "Foreign Language":
+        courseCredits = ["Foreign Language"]
+        courseLevel = parseCourseLevel(courseTitle)
+    else:
+        courseCredits, courseLevel = parseCourseCreditStr(courseCreditStr)
     
     # Some courses are repeated across categories; some with different credit types, so we have to merge them
     for otherCourseDict in courseDicts:
@@ -179,7 +165,7 @@ for tagIndex, thisTag in enumerate(titleTags):
         del(titleTags[tagIndex])
 
 for thisTitleTag in titleTags:
-    courseDict: dict[str, str | list[str]] | None = getCourseInfo(thisTitleTag)
+    courseDict: dict[str, str | None | list[str]] | None = getCourseInfo(thisTitleTag)
     if courseDict != None:
         courseDicts.append(courseDict)
 
