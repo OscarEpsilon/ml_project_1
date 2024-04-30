@@ -170,4 +170,5 @@ for thisTitleTag in titleTags:
         courseDicts.append(courseDict)
 
 courseDF: pd.DataFrame = pd.DataFrame(courseDicts)
+courseDF = courseDF.set_index(COURSES_TITLE_KEY)
 courseDF.to_csv("courses.csv")
