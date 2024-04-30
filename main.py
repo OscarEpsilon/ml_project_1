@@ -35,7 +35,7 @@ def parseCourseLevel(strWithLevel: str) -> str | None:
 
 # Cleanup credit string and remove course level
 def cleanCreditStr(courseCreditStr: str) -> str:
-    return courseCreditStr.replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace(" Level ", " ").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art")
+    return courseCreditStr.replace(" Level ", " ").replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art")
 
 def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str | None]:
     courseCredits: list[str] = cleanCreditStr(courseCreditStr).split(", ")
