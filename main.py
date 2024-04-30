@@ -149,7 +149,6 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | None | list[str]] | None
     for otherCourseDict in courseDicts:
         if otherCourseDict[COURSES_TITLE_KEY] == courseTitle:
             otherCourseDict[COURSES_CREDITS_KEY] = list(set(courseCredits + otherCourseDict[COURSES_CREDITS_KEY])) # type: ignore
-
             return None
 
     return {COURSES_TITLE_KEY: courseTitle,
