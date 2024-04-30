@@ -17,8 +17,32 @@ catalogSoup: Final[bs4.BeautifulSoup] = bs4.BeautifulSoup(catalogHTML, "html5lib
 
 courseDicts: list[dict[str, str]] = list[dict[str, str]]()
 
-def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str]:
-    level: str
+def generateCourseCreditStr(courseCreditInfo: tuple[list[str], str | None]) -> str:
+    res: str = ""
+
+    courseCredits: list[str] = courseCreditInfo[0]
+    courseLevel: str | None = courseCreditInfo[1]
+
+    if len(courseCredits) == 1:
+        res = courseCreditInfo[0][0]
+    elif len(courseCredits) == 2:
+        res = f"{courseCredits[0]} or {courseCredits[1]}"
+    else:
+        res = ""
+        for thisCourseCredit in courseCredits[:-1]:
+            res += f"{thisCourseCredit}, "
+        res += f"or {courseCredits[-1]}"
+    
+    if courseLevel != None:
+        if courseLevel == "Honors":
+            res = f"Honors {res}"
+        else:
+            res += f" {courseLevel}"
+    
+    return res
+
+def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str | None]:
+    level: str | None = None
     if courseCreditStr.find(" 1/2") != -1:
         level = "1/2"
     elif courseCreditStr.find(" 1") != -1:
@@ -27,11 +51,11 @@ def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str]:
         level = "2"
     elif courseCreditStr.find(" 3") != -1:
         level = "3"
-    else:
+    elif courseCreditStr.find("Honors ") != -1:
         level = "Honors"
     
-    credits: list[str] = courseCreditStr.replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("/", ", ").replace(", or ", ", ").replace(" or ", ", ").split(", ")
-    
+    credits: list[str] = courseCreditStr.replace(" Level ", " ").replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art").split(", ")
+
     return (credits, level)
 
 def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
@@ -125,30 +149,20 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     if courseDesc[-1:] == " ":
         courseDesc = courseDesc[:-1]
     
-    # Some courses are repeated across categories; some with different credit types
+    courseCreditInfo: tuple[list[str], str | None] = parseCourseCreditStr(courseCredit)
+    
+    # Some courses are repeated across categories; some with different credit types, so we have to merge them
+    otherCourseDict: dict[str, str] | None = None
     for otherCourseDict in courseDicts:
         if otherCourseDict[COURSES_TITLE_KEY] == courseTitle:
-            otherCourseCreditInfo: tuple[list[str], str] = parseCourseCreditStr(otherCourseDict[COURSES_CREDIT_KEY])
-            thisCourseCreditInfo: tuple[list[str], str] = parseCourseCreditStr(courseCredit)
-
-            courseCredits: list[str] = list(set(thisCourseCreditInfo[0] + otherCourseCreditInfo[0]))
-
-            if len(courseCredits) == 1:
-                otherCourseDict[COURSES_CREDIT_KEY] = courseCredits[0]
-            elif len(courseCredits) == 2:
-                otherCourseDict[COURSES_CREDIT_KEY] = f"{courseCredits[0]} or {courseCredits[1]}"
-            else:
-                otherCourseDict[COURSES_CREDIT_KEY] = ""
-                for thisCourseCredit in courseCredits[:-1]:
-                    otherCourseDict[COURSES_CREDIT_KEY] += f"{thisCourseCredit}, "
-                otherCourseDict[COURSES_CREDIT_KEY] += f"or {courseCredits[-1]}"
-            
-            if thisCourseCreditInfo[1] == "Honors":
-                otherCourseDict[COURSES_CREDIT_KEY] = f"Honors {otherCourseDict[COURSES_CREDIT_KEY]}"
-            else:
-                otherCourseDict[COURSES_CREDIT_KEY] += f" {thisCourseCreditInfo[1]}"
+            otherCourseCreditInfo: tuple[list[str], str | None] = parseCourseCreditStr(otherCourseDict[COURSES_CREDIT_KEY])
+            courseCredits: list[str] = list(set(courseCreditInfo[0] + otherCourseCreditInfo[0]))
+            otherCourseDict[COURSES_CREDIT_KEY] = generateCourseCreditStr((courseCredits, courseCreditInfo[1]))
 
             return None
+    
+    # But even if a course isn't repeated across categories, we still want to clean up its credits string
+    courseCredit = generateCourseCreditStr(courseCreditInfo)
 
     return {COURSES_TITLE_KEY: courseTitle,
             COURSES_CREDIT_KEY: courseCredit,
