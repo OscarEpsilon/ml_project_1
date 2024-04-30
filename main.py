@@ -42,21 +42,21 @@ def generateCourseCreditStr(courseCreditInfo: tuple[list[str], str | None]) -> s
     return res
 
 def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str | None]:
-    level: str | None = None
+    courseLevel: str | None = None
     if courseCreditStr.find(" 1/2") != -1:
-        level = "1/2"
+        courseLevel = "1/2"
     elif courseCreditStr.find(" 1") != -1:
-        level = "1"
+        courseLevel = "1"
     elif courseCreditStr.find(" 2") != -1:
-        level = "2"
+        courseLevel = "2"
     elif courseCreditStr.find(" 3") != -1:
-        level = "3"
+        courseLevel = "3"
     elif courseCreditStr.find("Honors ") != -1:
-        level = "Honors"
+        courseLevel = "Honors"
     
-    credits: list[str] = courseCreditStr.replace(" Level ", " ").replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art").split(", ")
+    courseCredits: list[str] = courseCreditStr.replace(" Level ", " ").replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art").split(", ")
 
-    return (credits, level)
+    return (courseCredits, courseLevel)
 
 def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     courseTitle: str = ""
