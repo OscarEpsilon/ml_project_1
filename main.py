@@ -8,20 +8,21 @@ CATALOG_URL: Final[str] = "https://www.newschoolva.org/academics/course-catalog/
 CATALOG_REQ_HEADERS: Final[dict[str, str]] = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"}
 
 COURSES_TITLE_KEY: Final[str] = "title"
-COURSES_CREDIT_KEY: Final[str] = "credit"
+COURSES_CREDITS_KEY: Final[str] = "credit"
+COURSES_LEVEL_KEY: Final[str] = "level"
 COURSES_DESC_KEY: Final[str] = "description"
 
 catalogRes: Final[rq.Response] = rq.get(CATALOG_URL, headers=CATALOG_REQ_HEADERS)
 catalogHTML: Final[str] = catalogRes.text
 catalogSoup: Final[bs4.BeautifulSoup] = bs4.BeautifulSoup(catalogHTML, "html5lib")
 
-courseDicts: list[dict[str, str]] = list[dict[str, str]]()
+courseDicts: list[dict[str, str | list[str]]] = list[dict[str, str | list[str]]]()
 
-def generateCourseCreditStr(courseCreditInfo: tuple[list[str], str | None]) -> str:
+def generateCourseCreditStr(courseCreditInfo: tuple[list[str], str]) -> str:
     res: str = ""
 
     courseCredits: list[str] = courseCreditInfo[0]
-    courseLevel: str | None = courseCreditInfo[1]
+    courseLevel: str = courseCreditInfo[1]
 
     if len(courseCredits) == 1:
         res = courseCreditInfo[0][0]
@@ -33,7 +34,7 @@ def generateCourseCreditStr(courseCreditInfo: tuple[list[str], str | None]) -> s
             res += f"{thisCourseCredit}, "
         res += f"or {courseCredits[-1]}"
     
-    if courseLevel != None:
+    if courseLevel != "0":
         if courseLevel == "Honors":
             res = f"Honors {res}"
         else:
@@ -41,8 +42,8 @@ def generateCourseCreditStr(courseCreditInfo: tuple[list[str], str | None]) -> s
     
     return res
 
-def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str | None]:
-    courseLevel: str | None = None
+def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str]:
+    courseLevel: str
     if courseCreditStr.find(" 1/2") != -1:
         courseLevel = "1/2"
     elif courseCreditStr.find(" 1") != -1:
@@ -53,12 +54,14 @@ def parseCourseCreditStr(courseCreditStr: str) -> tuple[list[str], str | None]:
         courseLevel = "3"
     elif courseCreditStr.find("Honors ") != -1:
         courseLevel = "Honors"
+    else:
+        courseLevel = "0"
     
     courseCredits: list[str] = courseCreditStr.replace(" Level ", " ").replace(" 1/2", "").replace(" 1", "").replace(" 2", "").replace("Honors ", "").replace("PE/Health", "PE+Health").replace("/", ", ").replace("PE+Health", "PE/Health").replace(", or ", ", ").replace(" or ", ", ").replace("Arts", "Art").split(", ")
 
     return (courseCredits, courseLevel)
 
-def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
+def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str | list[str]] | None:
     courseTitle: str = ""
 
     # Some courses have their line break nested inside their strong tag instead of outside, breaking titleTag.string
@@ -76,19 +79,22 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     # we just don't even bother to make exceptions for all of them here
     if courseTitle == "Collage Studio":
         return {COURSES_TITLE_KEY: courseTitle,
-                COURSES_CREDIT_KEY: "Art 1",
+                COURSES_CREDITS_KEY: ["Art"],
+                COURSES_LEVEL_KEY: "1",
                 COURSES_DESC_KEY: "Students will work with mixed media techniques to create various collage artworks. Students can expect to work in 2D, 3D, and digital art mediums to develop their collages. EQ: How can pre-existing images and materials be repurposed to create a new meaning?"}
 
     # Also this one
     if courseTitle == "Poetry, English 1":
         return {COURSES_TITLE_KEY: "Poetry",
-                COURSES_CREDIT_KEY: "English 1",
+                COURSES_CREDITS_KEY: ["English"],
+                COURSES_LEVEL_KEY: "1",
                 COURSES_DESC_KEY: "Poetry is an art that can be written, spoken, or performed–it is a total experience of language. To appreciate this art, we must learn the tools and techniques employed by the artists in its creation, and then study the end effect. You’ll be expected, early on, merely to respond to the poems in a human way. As we begin to share some ideas of what a poem is, what it does, and how, and why–we’ll explore the poems on a more sophisticated level. We will read a lot of poems, both traditional and those that break from tradition, and we will also craft and share our own poetry in an attempt to answer the question: How does the poet use all the tools at their disposal to create an experience in the reader?"}
 
     # And this one
     if courseTitle == "Mid-Century Crossroads":
         return {COURSES_TITLE_KEY: "Mid-Century Crossroads: The 1950s and 60s",
-                COURSES_CREDIT_KEY: "US History 1",
+                COURSES_CREDITS_KEY: ["US History"],
+                COURSES_LEVEL_KEY: "1",
                 COURSES_DESC_KEY: "The mid twentieth century witnessed intensely accelerated change in American society. Following World War II, political, economic, and social patterns led to widespread divisions within America. A time which appeared prosperous and idyllic on the surface came to an abrupt halt as Black Americans and women demanded civil rights, America’s youth became disillusioned, and conflicts arose between the generations. This course analyzes the causes and effects of this time period and its permanent impact on American culture."}
 
     # Some courses have an unbolded letter at the start of their title
@@ -149,23 +155,20 @@ def getCourseInfo(titleTag: bs4.Tag) -> dict[str, str] | None:
     if courseDesc[-1:] == " ":
         courseDesc = courseDesc[:-1]
     
-    courseCreditInfo: tuple[list[str], str | None] = parseCourseCreditStr(courseCredit)
+    courseCredits: list[str]
+    courseLevel: str
+    courseCredits, courseLevel = parseCourseCreditStr(courseCredit)
     
     # Some courses are repeated across categories; some with different credit types, so we have to merge them
-    otherCourseDict: dict[str, str] | None = None
     for otherCourseDict in courseDicts:
         if otherCourseDict[COURSES_TITLE_KEY] == courseTitle:
-            otherCourseCreditInfo: tuple[list[str], str | None] = parseCourseCreditStr(otherCourseDict[COURSES_CREDIT_KEY])
-            courseCredits: list[str] = list(set(courseCreditInfo[0] + otherCourseCreditInfo[0]))
-            otherCourseDict[COURSES_CREDIT_KEY] = generateCourseCreditStr((courseCredits, courseCreditInfo[1]))
+            otherCourseDict[COURSES_CREDITS_KEY] = list(set(courseCredits + otherCourseDict[COURSES_CREDITS_KEY])) # type: ignore
 
             return None
-    
-    # But even if a course isn't repeated across categories, we still want to clean up its credits string
-    courseCredit = generateCourseCreditStr(courseCreditInfo)
 
     return {COURSES_TITLE_KEY: courseTitle,
-            COURSES_CREDIT_KEY: courseCredit,
+            COURSES_CREDITS_KEY: courseCredits,
+            COURSES_LEVEL_KEY: courseLevel,
             COURSES_DESC_KEY: courseDesc}
 
 titleTags: Final[bs4.ResultSet[bs4.Tag]] = catalogSoup.find_all("strong")
@@ -176,7 +179,7 @@ for tagIndex, thisTag in enumerate(titleTags):
         del(titleTags[tagIndex])
 
 for thisTitleTag in titleTags:
-    courseDict: dict[str, str] | None = getCourseInfo(thisTitleTag)
+    courseDict: dict[str, str | list[str]] | None = getCourseInfo(thisTitleTag)
     if courseDict != None:
         courseDicts.append(courseDict)
 
